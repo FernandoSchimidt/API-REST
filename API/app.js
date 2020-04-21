@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const morgan = require('morgan')
+app.use('/uploads', express.static('uploads'));
 const bodyParser = require('body-parser')
 
 const rotaProdutos = require('./routes/produtos')

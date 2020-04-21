@@ -1,6 +1,32 @@
 const express = require('express')
-const router = express.Router()
-const mysql = require('../mysql').pool
+const router = express.Router();
+const mysql = require('../mysql').pool;
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, './uploads/')
+    },
+    filename: function (req, file, cb) {
+        cb(null, new Date().toISOString().replace('-', '').replace('-', '').replace('T', '').replace(':', '').replace(':', '').replace('.', '').replace('Z', '') + file.originalname);
+    }
+});
+
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype === 'image/jpg' || file.mimetype === 'image/png') {
+        cb(null, true)
+    } else {
+        cb(null, false)
+    }
+}
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 1024 * 1024 * 5
+    },
+    fileFilter: fileFilter
+});
 
 //retorna todos os produtos
 router.get('/', (req, res, next) => {
@@ -42,8 +68,7 @@ router.get('/', (req, res, next) => {
 });
 
 //insere um produto
-router.post('/', (req, res, next) => {
-
+router.post('/', upload.single('produto_imagem'), (req, res, next) => {
     mysql.getConnection((error, conn) => {
         if (error) {
             return TransformStream.status(500).send({
@@ -51,11 +76,14 @@ router.post('/', (req, res, next) => {
             })
         }
         conn.query(
-            'INSERT INTO produtos (nome,preco) VALUES(?,?)',
-            [req.body.nome, req.body.preco],
+            'INSERT INTO produtos (nome,preco,imagem_produto) VALUES(?,?,?)',
+            [
+                req.body.nome,
+                req.body.preco,
+                req.file.path
+            ],
             (error, result, field) => {
                 conn.release();
-
                 if (error) {
                     return TransformStream.status(500).send({
                         error: error
@@ -67,6 +95,7 @@ router.post('/', (req, res, next) => {
                         id_produto: result.id_produto,
                         nome: req.body.nome,
                         preco: req.body.preco,
+                        imagem_produto: req.file.path,
                         request: {
                             tipo: 'GET',
                             descricao: 'Retorna todos os produtos',
